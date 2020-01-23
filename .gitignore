@@ -1,0 +1,25 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+
+
+# Mac/OSX
+.DS_Store
+
+
+# Distribution / packaging
+data/
+
+
+# specific to IntelliJ IDEA (due to using Pycharm IDE)
+.idea/
+
+
+# Environments
+.env
+.venv
+env/
+venv/
+
+
+# pyenv
+.python-version
