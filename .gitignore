@@ -6,6 +6,7 @@ __pycache__/
 
 # Distribution / packaging
 data/
+sources/
 
 # specific to IntelliJ IDEA (due to using Pycharm IDE)
 .idea/
