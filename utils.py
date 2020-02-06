@@ -9,13 +9,17 @@ def lonlat_to_xy(Lon:float, Lat:float, inverse=False, zone=33) -> Tuple:
     
     Arguments:
     ----------
-    Lat: float, Latitude value if inverse=False, otherwise x value.
+    Lat: float,
+        Latitude value if inverse=False, otherwise x value.
     
-    Lon: float, Longitude value if inverse=False, otherwise y value.
+    Lon: float,
+        Longitude value if inverse=False, otherwise y value.
     
-    inverse: bool, False if converting from lat, long to x, y otherwise set to True.
+    inverse: bool,
+        False if converting from lat, long to x, y otherwise set to True.
     
-    zone: int, The UTM zone (33 is the UTM zone of Berlin).
+    zone: int,
+        The UTM zone (33 is the UTM zone of Berlin).
 
 
     Returns:
@@ -41,29 +45,39 @@ def calc_xy_distance(x1, y1, x2, y2):
 def create_grid(centre:Tuple[float, float], radius:int, minor_radius:int, area_shape:str, ov=True):
     """Creates a grid with centres given in cartesian coordinates.
 
-    TODO: Create grid for other shapes besides circles.
-
     Arguments:
     ----------
-    centre: Tuple[float, float], The centre of the grid.
+    centre: Tuple[float, float],
+        The centre of the grid.
 
-    radius: int, The grid radius in meters.
+    radius: int,
+        The grid radius in meters.
 
-    minor_radius: int, The radius of the grid shapes.
+    minor_radius: int,
+        The radius of the grid shapes.
 
-    shape: str, The grid shapes to use.
+    shape: str,
+        The grid shapes to use.
 
-    ov: bool, True to allow an overlap between grid shapes (recommended for
-              shape='circle') or False to not allow overlap. In either case,
-              the centres are equidistant from each other.
+    ov: bool,
+        True to allow an overlap between grid shapes (recommended for
+        shape='circle') or False to not allow overlap. In either case,
+        the centres are equidistant from each other.
 
     Returns:
     --------
-    centres_x: numpy.ndarray, Grid centres in cartesian coordinates (x axis).
+    centres_x: numpy.ndarray,
+        Grid centres in cartesian coordinates (x axis).
 
-    centres_y: numpy.ndarray, Grid centres in cartesian coordinates (y axis).
+    centres_y: numpy.ndarray,
+        Grid centres in cartesian coordinates (y axis).
 
-    area_radius: float, The radius of each grid circle.
+    area_radius: float,
+        The radius of each grid circle.
+    
+    TODO:
+    -----
+    * Create grid for other shapes besides circles.
     """
     # calculate the minimum value needed to make the grid shapes overlap
     if ov:
@@ -96,3 +110,4 @@ def create_grid(centre:Tuple[float, float], radius:int, minor_radius:int, area_s
             raise ValueError(f"Number of elements in centre should be 2. Got {len(centre)} instead")
 
     return centres_x, centres_y, area_radius
+
