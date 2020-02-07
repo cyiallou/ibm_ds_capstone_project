@@ -79,9 +79,9 @@ class fsquare():
         API call response as a json file.
         """
         if tp=='cat':
-            a = f'&query={search_params["query"]}'
-        elif tp=='qur':
             a = f'&categoryId={search_params["categories"]}'
+        elif tp=='qur':
+            a = f'&query={search_params["query"]}'
         else:
             raise ValueError(f"tp can be either 'cat' or 'qur'. Got {tp}.")
         
@@ -154,9 +154,13 @@ class fsquare():
                     api_params['search_params']['query'] = item
                 try:
                     response = self.make_fsquare_api_call(api_params['search_params'], api_params['fixed_search_params'], tp=tp)
+                    # display some useful warnings
                     if response['meta']['code']==429:
-                        warn("API regural calls limit exceeded")
-                        return None
+                        warn("API regural calls limit exceeded. Function returned.")
+                        return all_fsq_data, venue_ids
+                    if response['meta']['code']==500:  # server error
+                        warn(f"Server error. Response output: {reponse}")
+                    # get the venues
                     venues = response['response']['venues']
                 except:
                     venues = []
@@ -165,6 +169,8 @@ class fsquare():
                     if venue['id'] not in venue_ids:
                         all_fsq_data['venues'].append(venue)
                         venue_ids.append(venue['id'])
+                        if verbose:
+                            print(f'Added 1 venue (total={len(venue_ids)})\n')
             if verbose & (((i+1) % 10)==0):
                 print(f'Finished searching area {i+1} of {number_of_areas_to_search}\n')
         if verbose:
