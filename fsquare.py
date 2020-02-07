@@ -9,8 +9,8 @@ Dependencies:
 * typing module for useful type casting.
 """
 import requests
-from typing import List, Tuple
 from warnings import warn
+from typing import List, Tuple
 
 
 class fsquare():
@@ -96,7 +96,7 @@ class fsquare():
         return requests.get(url).json()
 
 
-    def get_fsquare_data(self, api_params:dict, queries:List[str], tp:str, categories={}, coords=[[]], verbose=False) -> Tuple:
+    def get_fsquare_data(self, api_params:dict, queries:List[str], tp:str, coords=[[]], verbose=False) -> Tuple:
         """Calls the Foursquare API for the search strings in queries
            and outputs the final (merged) responses.
         
@@ -114,9 +114,6 @@ class fsquare():
         tp: str,
             The search type. Can be 'cat' to search for specific
             categories or 'qur' to search for string queries.
-
-        categories: dict, (Optional. Default={})
-            The categories to search for.
         
         coords: List[List] or numpy.ndarray[numpy.ndarray, numpy.ndarray],
                 (Optional. Default=[[]])
@@ -133,10 +130,6 @@ class fsquare():
 
         venue_ids: List[str],
             The unique id strings of each venue.
-            
-        restaurants: dict,
-            The merged responses from the API calls. It only stores the venues
-            specified by the category ID in categories input.
         """
         # check coords input
         if type(coords)==list:
@@ -150,9 +143,6 @@ class fsquare():
 
         all_fsq_data = {'venues': []}  # to be populated by the API responses
         venue_ids = list()  # to be populated by the unique venue ids
-        restaurants = {}
-        for _,val in categories.items():
-            restaurants[val] = []
 
         for i, longlat in enumerate(coords):  # search within each specified area
             api_params['search_params']['longitude'] = longlat[0]
@@ -175,14 +165,9 @@ class fsquare():
                     if venue['id'] not in venue_ids:
                         all_fsq_data['venues'].append(venue)
                         venue_ids.append(venue['id'])
-                        
-                        # add to the restaurants dictionary
-                        venue_category_id = venue['categories'][0]['id']  # get the venue category id
-                        if str(venue_category_id) in venue_categories:
-                            restaurants[venue_categories[str(venue_category_id)]] += [venue]
-            if verbose & ((i+1) % 10)==0:
+            if verbose & (((i+1) % 10)==0):
                 print(f'Finished searching area {i+1} of {number_of_areas_to_search}\n')
         if verbose:
             print(f'Finished processing {number_of_areas_to_search} areas.')
             
-        return all_fsq_data, venue_ids, restaurants
+        return all_fsq_data, venue_ids
