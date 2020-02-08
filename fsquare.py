@@ -96,7 +96,7 @@ class fsquare():
         return requests.get(url).json()
 
 
-    def get_fsquare_data(self, api_params:dict, queries:List[str], tp:str, coords=[[]], verbose=False) -> Tuple:
+    def get_fsquare_data(self, api_params:dict, queries:List[str], tp:str, coords=[[]], verbose=0) -> Tuple:
         """Calls the Foursquare API for the search strings in queries
            and outputs the final (merged) responses.
         
@@ -120,16 +120,16 @@ class fsquare():
             Centre coordinates as (latitude, longitude) of the area(s)
             to search.
             
-        verbose: bool, (Optional. Default=False)
-            Set to True to print out useful messages to track progress.
+        verbose: int, (Optional. Default=0)
+            Sets the verbosity level: 0 for printing out nothing, 1 for printing some
+            useful messages to track progress and 2 for printing more info (likely to
+            print a lot of messages!).
             
         Returns:
         --------
         fsq_data: dict,
-            The merged responses from the API calls. It stores all the venues.
-
-        venue_ids: List[str],
-            The unique id strings of each venue.
+            The merged responses from the API calls. It stores all the venues and the
+            unique id string of each venue.
         """
         # check coords input
         if type(coords)==list:
@@ -141,9 +141,7 @@ class fsquare():
                 raise ValueError(f'coords must be of shape (?, 2). Got {coords.shape}.')
             number_of_areas_to_search = coords.shape[0]
 
-        all_fsq_data = {'venues': []}  # to be populated by the API responses
-        venue_ids = list()  # to be populated by the unique venue ids
-
+        all_fsq_data = {'venues': [], 'venue_ids': []}  # to be populated by the API responses
         for i, longlat in enumerate(coords):  # search within each specified area
             api_params['search_params']['longitude'] = longlat[0]
             api_params['search_params']['latitude'] = longlat[1]
@@ -166,14 +164,14 @@ class fsquare():
                     venues = []
                 for venue in venues:
                     # avoid adding duplicates to fsq_data
-                    if venue['id'] not in venue_ids:
+                    if venue['id'] not in all_fsq_data['venue_ids']:
                         all_fsq_data['venues'].append(venue)
-                        venue_ids.append(venue['id'])
-                        if verbose:
+                        all_fsq_data['venue_ids'].append(venue['id'])
+                        if verbose==2:
                             print(f'Added 1 venue (total={len(venue_ids)})\n')
             if verbose & (((i+1) % 10)==0):
                 print(f'Finished searching area {i+1} of {number_of_areas_to_search}\n')
         if verbose:
-            print(f'Finished processing {number_of_areas_to_search} areas.')
+            print(f'Finished processing {number_of_areas_to_search} areas. Found {len(venue_ids)} venues!')
             
-        return all_fsq_data, venue_ids
+        return all_fsq_data
