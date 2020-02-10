@@ -215,8 +215,8 @@ class fsquare():
 
         valid_main_category_names = [item['name'] for item in all_categories['response']['categories']]
         if categ_name not in valid_main_category_names:
-            raise ValueError(f'String {categ_name} is not a main category name.'
-                             f'Viable names are\n{valid_main_category_names}')
+            raise ValueError(f"String '{categ_name}' is not a main category name. "
+                    f"Viable names are:\n{valid_main_category_names}")
 
         # get the category names that have the string defined by the argument w
         w_categories = []
