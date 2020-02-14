@@ -1,4 +1,7 @@
-"""Web scraper for the trip advisor website.
+"""Web scraper for the Trip Advisor website.
+
+This class module is built primarily to extract data from Berlin restaurant pages.
+Although it hasn't been tested, it should work without any changes for other cities as well.
 
 Dependencies:
 -------------
@@ -21,11 +24,12 @@ class Scraper:
     >>> from tascraper import Scraper
     >>> URL = 'https://www.tripadvisor.com/Restaurants-g187323-Berlin.html'
     >>> scraper = Scraper()
-    >>> links = scraper.parse(url=URL, all_pgs=False)
-    scraper.scrape(links)
+    >>> links = scraper.crawl(url=URL, all_pgs=False)
+    >>> data = scraper.scrape(links, lang='ALL', vb=1)
 
-    To scrape a single page:
-    Scraper().scrape_page
+    To get data from a single page:
+    >>> scraper = Scraper()
+    >>> data = scraper.parse_page(scraper._get_soup(URL))
     """
 
     def __init__(self):  # , argv):
@@ -37,7 +41,7 @@ class Scraper:
     #     assert len(argv) == 2
     #     return argv[0], argv[1]
 
-    def parse(self, url: str, all_pgs=True) -> List[List[str]]:
+    def crawl(self, url: str, all_pgs=True) -> List[List[str]]:
         """Get list of restaurants.
 
         Arguments:
@@ -61,9 +65,9 @@ class Scraper:
         self.domain_name = url[url.rfind('.', 0, stp):stp]
         self.base_url = url[:stp]
 
-        print(f'[parse] url: {url}')
+        print(f'[crawl] From url {url}')
         soup = self._get_soup(url)
-
+        print('[crawl] Retrieving restaurant listings...\n')
         if all_pgs:
             # get sub-pages with restaurants
             all_pages = [url] + self._crawler(soup)
@@ -74,27 +78,19 @@ class Scraper:
         else:
             # get the page listings from a single page
             links = [self._get_page_listings(soup)]
-
-        """
-        # Save the links for later use.
-        import pickle
-
-        with open('../data/crawled_links.pkl', 'wb') as f:
-            pickle.dump(links, f)
-
-        # Load them back:
-        with open('../data/crawled_links.pkl', 'rb') as f:
-            loaded_links = pickle.load(f)
-        """
+        print('[crawl] Retrieved all restaurant listings.\n')
         return links
 
-    def scrape(self, links: List[List[str]], vb=0) -> List[dict]:
+    def scrape(self, links: List[List[str]], lang='ALL', vb=0) -> List[dict]:
         """Extracts data from each restaurant page in links.
 
         Arguments:
         ----------
         links: List[List[str]],
             The restaurant web pages to scrape the data from.
+
+        lang: str, (optional; default='ALL')
+            The language filter to use for getting the reviews. Use 'en' for english.
 
         vb: int, (optional; default=0)
             The verbosity level. 0: no verbosity, 1: medium,
@@ -111,12 +107,9 @@ class Scraper:
             warn(f"Valid verbosity levels (vb) are [0, 1, 2]. Got {vb}. Changed to 1")
             vb = 1
 
-        data_info = ['venue_id', 'name', 'address', 'postcode', 'city', 'country',
-                     'price range', 'cuisines', 'meals', 'special diets', 'features']
-        v_id = 0
+        v_id = 0       # counter for assigning unique venue id
         data = list()  # populate with the individual restaurant data
-        # total_links = for i in
-        batch = 0  # to keep track of the number of link batches scraped
+        batch = 0      # to keep track of the number of link batches scraped
         total_batches = len(links)
         for search_page in links:
             batch += 1
@@ -124,112 +117,113 @@ class Scraper:
                 if vb == 2:
                     print(f"Scraping {link}")
 
-                soup = self._get_soup(link)
+                soup = self._get_soup(f"{link}?filterLang={lang}")  # apply the language filter
 
-                # assign a unique id
-                venue_id = f'id_{v_id}'
-                v_id += 1
-
-                # initialise venue data
-                venue_data = {item: '' for item in data_info}
-                venue_data['venue_id'] = venue_id
-
-                # ======== Get the info at the top of the page ========
-                top_info = soup.find(id='taplc_resp_rr_top_info_rr_resp_0')
-                name = top_info.find(class_='ui_header h1')
-                addr_street = top_info.find('div', class_='businessListingContainer').find('span',
-                                                                                           class_='street-address')
-                addr_extended = top_info.find('div', class_='businessListingContainer').find('span',
-                                                                                             class_='extended-address')
-                locality = top_info.find('div', class_='businessListingContainer').find('span', class_='locality')
-                country = top_info.find('div', class_='businessListingContainer').find('span', class_='country-name')
-
-                # check for NoneTypes and get the text for each variable
-                checks, texts = self._check_not_none([name, addr_street, addr_extended, locality, country])
-                name, [postcode, city], country = texts[0], texts[3].strip(', ').split(), texts[4]
-
-                # concatenate the addresses to get the full address
-                if sum(checks[1:3]) == 2:
-                    addr_street = texts[1] + f', {texts[2]}'
-                else:
-                    addr_street = texts[1]
-
-                # populate with the restaurant data
-                venue_data['name'] = name
-                venue_data['address'] = addr_street
-                venue_data['postcode'] = postcode
-                venue_data['city'] = city
-                venue_data['country'] = country
-
-                # ======== Get the details ========
-                # # Gets the about: DOES NOT WORK YET
-                # # < div class ="restaurants-detail-overview-cards-DetailsSectionOverviewCard__tagText--1OH6h">European gastronomic culture with oriental-lebanese tradition. A delicatessen / café with wine-trade, presenting fine cuisine and wine from Lebanon combined with finest French pastry. Cultural events to celebrate Lebanese / French friendship. Also providing catering made with fine regional products. Our specialties are more vegan and vegetarian, but also meat and chicken lovers will be extremely happy! Our typical homemade and handmade sweets, with the authentic lebanese Mokka are the perfect finish! By the way, our Hommous is the second to none...</div>
-
-                # GET THE CLASS OF SOMETHING:
                 try:
-                    # TODO: If CUISINES is not found then we don't extract anything. Find a more robust way
-                    details_top = soup.find("div", text="CUISINES")  # the class name is not the same in every web page
-                    # get the class name
-                    detail_category_class = details_top.attrs['class'][0]
-                    # get the price value class name
-                    detail_category_values_class = details_top.find_next_sibling("div").attrs['class'][0]
-                except AttributeError:
-                    print(f"[scrape] {link}: Could not fetch the details. \n")
-                    detail_category_class = detail_category_values_class = ''
+                    # get the venue_data
+                    venue_data = self.parse_page(soup)
 
-                if detail_category_class != detail_category_values_class:
-                    values = soup.find_all('div', class_=detail_category_values_class)
-                    for i, item in enumerate(soup.find_all('div', class_=detail_category_class)):
-                        ### To get a number for the price do values[i].text.strip(euro symbol)
-                        venue_data[item.text.lower()] = values[i].text
+                    # assign a unique id
+                    venue_data['venue_id'] = f'id_{v_id}'
+                    v_id += 1
 
-                # add the venue data to the general data set
-                data.append(venue_data)
-            if vb == 1:
+                    # add it to the data set
+                    data.append(venue_data)
+                except:
+                    print(f'[scrape]: Could not scrape {link}\n')
+
+            if (vb == 1) & (len(links) != 0):
                 print(f'Scraped batch {batch} out of {total_batches} batches.')
         return data
 
-            #################################
-            # CHECK OUT THE SCREENSHOTS
-            # data to get:: column name: Entry type
+    def parse_page(self, soup) -> dict:
+        """Parses the HTML and scrapes page data.
 
-            # DONE 1. restaurant name: str
-            # DONE 2. address: str  (street, postcode, city, country)
-            # DONE 3. cuisine: List[str]
+        Arguments:
+        ----------
+        soup: object,
+            The bs4.BeautifulSoup object.
 
-            # Find in the details page:
-            # DONE 1. cuisine: List[str]. Or in the main page (see screenshots)
-            # 2. about: str (raw text). <div class="restaurants-detail-overview-cards-DetailsSectionOverviewCard__desktopAboutText--VY6hs"> </div>
+        Returns:
+        --------
+        venue_data: dict,
+            The scraped restaurant data.
+        """
+        # ======== Get the info at the top of the page ========
+        top_info = soup.find(id='taplc_resp_rr_top_info_rr_resp_0')
+        name = top_info.find(class_='ui_header h1')
+        addr_street = top_info.find('div', class_='businessListingContainer').find('span',
+                                                                                   class_='street-address')
+        addr_extended = top_info.find('div', class_='businessListingContainer').find('span',
+                                                                                     class_='extended-address')
+        locality = top_info.find('div', class_='businessListingContainer').find('span', class_='locality')
+        country = top_info.find('div', class_='businessListingContainer').find('span', class_='country-name')
 
-            # Find in the location page:
-            # DONE 1. address: str. Or in the main page (see screenshots)
+        city = soup.select("span[class='header_popularity popIndexValidation']")[0].a.text
+        dm = 'Restaurants in '  # should be the same in all web pages
+        city = city[city.find(dm)+len(dm):]
 
-            # Find in the reviews page:
-            # page url = https://www.tripadvisor.com/Restaurant_Review-g187323-d8025081-Reviews-Happies-Berlin.html
-            # review page url = https://www.tripadvisor.com/Restaurant_Review-g187323-d8025081-Reviews-Happies-Berlin.html#REVIEWS
-            # DONE 1. price_range: str (symbols?)
-            # 2. ratings: np.float, (all languages or english only?)
-            #     or individual columns as: Excellent, Very good, Average, Poor, Terrible
-            # 3. number_of_reviews: np.float
-            # 4. text_reviews: List[str] (all languages or english only?)
-            #################################
+        # check for NoneTypes and get the text for each variable
+        checks, texts = self._check_not_none([name, addr_street, addr_extended, locality, country])
+        #name, [postcode, city], country = texts[0], texts[3].strip(', ').split(), texts[4]
+        name, postcode_city, country = texts[0], texts[3], texts[4]
 
-        # convert to pandas dataFrame with index a unique id (ta_01, ta_02 ...)
-        # df = pd.DataFrame(data=data)
-        # save as h5 or pickle or csv
+        postcode = postcode_city.replace(',', '').strip().strip(city).strip()
 
-    @staticmethod
-    def _check_not_none(bs4out: list) -> Tuple[list, list]:
-        out = list()
-        text = list()
-        for item in bs4out:
-            try:
-                text.append(item.text)
-                out.append(True)
-            except AttributeError:
-                out.append(False)
-                text.append([''])
-        return out, text
+        # concatenate the addresses to get the full address
+        if sum(checks[1:3]) == 2:
+            addr_street = texts[1] + f', {texts[2]}'
+        else:
+            addr_street = texts[1]
+
+        # get the symbol based price range
+        try:
+            price_range_symbol = soup.select('.header_links a')[0].text
+        except:
+            price_range_symbol = ''
+
+
+        # populate with the restaurant data
+        venue_data = dict()
+        venue_data['name'] = name
+        venue_data['address'] = addr_street
+        venue_data['postcode'] = postcode
+        venue_data['city'] = city
+        venue_data['country'] = country
+        venue_data['price range symbol'] = price_range_symbol
+
+        # ======== Get the details ========
+        try:
+            # the class name is not the same in every web page so we choose by the text
+            details_top = soup.find("div", text="CUISINES")
+            # TODO: If 'CUISINES' is not found then we don't extract anything. Find a more robust method
+
+            # get the class name
+            detail_category_class = details_top.attrs['class'][0]
+
+            # get the price value class name
+            detail_category_values_class = details_top.find_next_sibling("div").attrs['class'][0]
+        except AttributeError:
+            print("[parse page] Could not fetch the details.\n")
+            detail_category_class = detail_category_values_class = ''
+
+        if detail_category_class != detail_category_values_class:
+            values = soup.find_all('div', class_=detail_category_values_class)
+            for i, item in enumerate(soup.find_all('div', class_=detail_category_class)):
+                venue_data[item.text.lower()] = values[i].text
+
+        # ======== get the ratings ========
+        # find the 'Traveler rating' section
+        b = soup.select("div[class='node-preserve'][data-ajax-preserve='preserved-filters_detail_checkbox_trating_true']")
+
+        # contents[0] is always the section title (e.g. "Traveler rating")
+        label_elems = b[0].contents[1].select('div')[0].select('label')
+        label_elems_values = b[0].contents[1].select('div')[0].select("span[class='row_num is-shown-at-tablet']")
+        for i, item in enumerate(label_elems):
+            # convert to float and add it to the dictionary
+            venue_data['rating_'+item.text] = float(label_elems_values[i].text.replace(',', '.'))
+
+        return venue_data
 
     def _crawler(self, soup) -> List[str]:
         """Finds all urls from a Trip Advisor search page.
@@ -273,7 +267,7 @@ class Scraper:
         urls = list()
         for i in range(0, data_offsets[-1], offset):
             urls.append(self.base_url + url_parts[0] + f'-oa{i + offset}-' + url_parts[1])
-        print('Finished crawling\n')
+        print('Finished crawling.\n')
         return urls
 
     def _get_page_listings(self, soup) -> List[str]:
@@ -304,6 +298,20 @@ class Scraper:
         return links
 
     @staticmethod
+    def _check_not_none(bs4out: list) -> Tuple[list, list]:
+        """Checks for NoneTypes and gets the text for each item."""
+        out = list()
+        text = list()
+        for item in bs4out:
+            try:
+                text.append(item.text)
+                out.append(True)
+            except AttributeError:
+                out.append(False)
+                text.append([''])
+        return out, text
+
+    @staticmethod
     def _get_soup(url: str):
         """Returns the bs4.BeautifulSoup object."""
         page = requests.get(url)
@@ -313,8 +321,6 @@ class Scraper:
 def main():
     # read command line arguments (the url)
     pass
-    #URL = 'https://www.tripadvisor.com/Restaurants-g187323-Berlin.html'
-    #soup = get_soup(URL)
 
 
 if __name__ == '__main__':
