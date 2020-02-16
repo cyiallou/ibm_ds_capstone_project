@@ -32,8 +32,11 @@ class Scraper:
     >>> data = scraper.scrape(links, lang='ALL', vb=1)
 
     To get data from a single page:
+    >>> URL = 'https://www.tripadvisor.com/Restaurant_Review-g187323-d2047693-Reviews-Ga_Ya_Ya-Berlin.html'
     >>> scraper = Scraper()
-    >>> data = scraper.parse_page(scraper.get_soup(URL))
+    >>> data, sess = scraper.parse_page(scraper.get_soup(URL))
+    >>> if sess:
+    >>>     sess.close()
     """
 
     def __init__(self):  # , argv):
