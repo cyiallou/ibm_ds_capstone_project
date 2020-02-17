@@ -14,7 +14,23 @@ Dependencies:
 * re - Regex library, to search for more complex strings
 * warnings - to issue useful user warnings
 * selenium - to interact with the web page and uncover hidden data
+
+Examples:
+--------
+>>> from tascraper import Scraper
+>>> URL = 'https://www.tripadvisor.com/Restaurants-g187323-Berlin.html'
+>>> scraper = Scraper()
+>>> links = scraper.crawl(url=URL, all_pgs=True)
+>>> data = scraper.scrape(links, lang='ALL', vb=1)
+
+To get data from a single page:
+>>> URL = 'https://www.tripadvisor.com/Restaurant_Review-g187323-d2047693-Reviews-Ga_Ya_Ya-Berlin.html'
+>>> scraper = Scraper()
+>>> data, sess = scraper.parse_page(scraper.get_soup(URL))
+>>> if sess:
+>>>     sess.close()
 """
+
 import requests
 import re
 from bs4 import BeautifulSoup
@@ -26,22 +42,6 @@ from typing import List, Tuple  # for type casting
 
 
 class Scraper:
-    """
-    Examples:
-    --------
-    >>> from tascraper import Scraper
-    >>> URL = 'https://www.tripadvisor.com/Restaurants-g187323-Berlin.html'
-    >>> scraper = Scraper()
-    >>> links = scraper.crawl(url=URL, all_pgs=True)
-    >>> data = scraper.scrape(links, lang='ALL', vb=1)
-
-    To get data from a single page:
-    >>> URL = 'https://www.tripadvisor.com/Restaurant_Review-g187323-d2047693-Reviews-Ga_Ya_Ya-Berlin.html'
-    >>> scraper = Scraper()
-    >>> data, sess = scraper.parse_page(scraper.get_soup(URL))
-    >>> if sess:
-    >>>     sess.close()
-    """
 
     def __init__(self):  # , argv):
         self.base_url = None
