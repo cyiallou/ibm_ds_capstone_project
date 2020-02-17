@@ -21,8 +21,8 @@ from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.common.exceptions import SessionNotCreatedException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
-from typing import List, Tuple
 from warnings import warn
+from typing import List, Tuple  # for type casting
 
 
 class Scraper:
@@ -46,11 +46,6 @@ class Scraper:
     def __init__(self):  # , argv):
         self.base_url = None
         self.domain_name = None
-        # self.url = self.parse_arguments(argv)
-
-    # def parse_arguments(self, argv):
-    #     assert len(argv) == 2
-    #     return argv[0], argv[1]
 
     def crawl(self, url: str, all_pgs=True) -> List[List[str]]:
         """Get list of restaurants.
@@ -493,4 +488,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    pass
