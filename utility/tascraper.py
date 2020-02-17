@@ -32,7 +32,7 @@ class Scraper:
     >>> from tascraper import Scraper
     >>> URL = 'https://www.tripadvisor.com/Restaurants-g187323-Berlin.html'
     >>> scraper = Scraper()
-    >>> links = scraper.crawl(url=URL, all_pgs=False)
+    >>> links = scraper.crawl(url=URL, all_pgs=True)
     >>> data = scraper.scrape(links, lang='ALL', vb=1)
 
     To get data from a single page:
