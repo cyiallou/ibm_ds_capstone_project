@@ -70,7 +70,7 @@ class Scraper:
         if url.find('https') != -1:
             stp = url.find('/', 7)  # avoid the http://
         else:
-            stp = url.find('/', 8)  # avoid the http://
+            stp = url.find('/', 8)  # avoid the https://
         self.domain_name = url[url.rfind('.', 0, stp):stp]
         self.base_url = url[:stp]
 
