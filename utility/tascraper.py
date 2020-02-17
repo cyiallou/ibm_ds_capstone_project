@@ -1,7 +1,11 @@
 """Web scraper for the Trip Advisor website.
 
+About:
+------
 This class module is built primarily to extract data from Berlin restaurant pages.
-Although it hasn't been tested, it should work without any changes for other cities as well.
+Minor changes might need to be made in order to work for other cities as well. The
+code is commented to help the developer make these changes. In addition, the warnings
+and the helpful messages printed out will also make it easy to spot what needs to be changed.
 
 Dependencies:
 -------------
@@ -14,11 +18,11 @@ Dependencies:
 import requests
 import re
 from bs4 import BeautifulSoup
-from typing import List, Tuple
-from warnings import warn
 from selenium import webdriver
 from selenium.common.exceptions import SessionNotCreatedException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
+from typing import List, Tuple
+from warnings import warn
 
 
 class Scraper:
@@ -177,19 +181,18 @@ class Scraper:
             The web driver session.
         """
 
-        # data_names = ['name', 'address', 'postcode', 'city', 'country',
-        #               'price range symbol', 'price range', 'cuisines',
-        #               'meals', 'features', 'special diets', 'about']
-        # # initialise the output
-        # venue_data = {item:'' for item in data_names}
+        data_to_extract = ['name', 'address', 'postcode', 'city', 'country', 'price range symbol',
+                           'price range', 'cuisines', 'meals', 'features', 'special diets', 'about',
+                           'rating_Excellent', 'rating_Very good', 'rating_Average', 'rating_Poor',
+                           'rating_Terrible']
+        # initialise the output
+        venue_data = {item:None for item in data_to_extract}
 
         # fixed parameters for searching the html
         search_class_params = {'about_text_class': 'restaurants-details-card-DesktopView__desktopAboutText--1VvQH',
                                'hidden_details_titles_class': 'restaurants-details-card-TagCategories__categoryTitle--28rB6',
                                'hidden_details_values_class': 'restaurants-details-card-TagCategories__tagText--Yt3iG'
                                }
-        # declare the output
-        venue_data = dict()
 
         # ======== Get the info at the top of the page ========
         top_info = soup.find(id='taplc_resp_rr_top_info_rr_resp_0')
@@ -255,15 +258,6 @@ class Scraper:
 
         # ======== Get the details ========
         try:
-            # # the class name is not the same in every web page so we choose by the text
-            # details_top = soup.find("div", text="CUISINES")
-            #
-            # # get the class name
-            # detail_category_class = details_top.attrs['class'][0]
-            #
-            # # get the price value class name
-            # detail_category_values_class = details_top.find_next_sibling("div").attrs['class'][0]
-
             items = soup.find('div',
                               class_='restaurants-details-card-DetailsCard__innerDiv--1Imq5').div.next_sibling.div
             try:
@@ -292,13 +286,6 @@ class Scraper:
             except Exception as e:
                 print("[parse page] Could not fetch the details.")
                 print(f'Error details: {repr(e)}\n')
-            finally:
-                detail_category_class = detail_category_values_class = ''
-
-        # if detail_category_class != detail_category_values_class:
-        #     values = soup.find_all('div', class_=detail_category_values_class)
-        #     for i, item in enumerate(soup.find_all('div', class_=detail_category_class)):
-        #         venue_data[item.text.lower()] = values[i].text
 
         # ======== get the ratings ========
         # find the 'Traveler rating' section
