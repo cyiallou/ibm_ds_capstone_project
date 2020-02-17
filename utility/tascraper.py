@@ -17,7 +17,7 @@ from bs4 import BeautifulSoup
 from typing import List, Tuple
 from warnings import warn
 from selenium import webdriver
-from selenium.common.exceptions import SessionNotCreatedException
+from selenium.common.exceptions import SessionNotCreatedException, TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
 
 
@@ -68,7 +68,10 @@ class Scraper:
         # check input url
         assert(url.find('http') != -1), "Make sure the input url starts with http:// or https://"
 
-        stp = url.find('/', 8)  # avoid the https://
+        if url.find('https') != -1:
+            stp = url.find('/', 7)  # avoid the http://
+        else:
+            stp = url.find('/', 8)  # avoid the http://
         self.domain_name = url[url.rfind('.', 0, stp):stp]
         self.base_url = url[:stp]
 
@@ -79,7 +82,6 @@ class Scraper:
             # get sub-pages with restaurants
             all_pages = [url] + self._crawler(soup)
             links = list()
-            # slow due to get_soup()
             for page in all_pages:
                 links.append(self._get_page_listings(self.get_soup(page)))
         else:
@@ -97,11 +99,11 @@ class Scraper:
             The restaurant web pages to scrape the data from.
 
         lang: str, (optional; default='ALL')
-            The language filter to use for getting the reviews. Use 'en' for english.
+            The language filter to use for getting the reviews. Use 'en' for english only.
 
         vb: int, (optional; default=0)
             The verbosity level. 0: no verbosity, 1: medium,
-            2: high (warning: might print many messages!).
+            2: high (warning: might print out many messages!).
 
         Returns:
         --------
@@ -114,11 +116,13 @@ class Scraper:
             warn(f"Valid verbosity levels (vb) are [0, 1, 2]. Got {vb}. Changed to 1")
             vb = 1
 
-        v_id = 0       # counter for assigning unique venue id
-        data = list()  # populate with the individual restaurant data
-        batch = 0      # to keep track of the number of link batches scraped
+        # initialise parameters and output list
+        v_id = 0   # counter for assigning unique venue id
+        batch = 0  # to keep track of the number of link batches scraped
         total_batches = len(links)
         session = None  # for selenium web driver session
+        data = list()   # populate with the individual restaurant data
+
         for search_page in links:
             batch += 1
             for link in search_page:
@@ -194,29 +198,40 @@ class Scraper:
                                                                                    class_='street-address')
         addr_extended = top_info.find('div', class_='businessListingContainer').find('span',
                                                                                      class_='extended-address')
-        locality = top_info.find('div', class_='businessListingContainer').find('span', class_='locality')
         country = top_info.find('div', class_='businessListingContainer').find('span', class_='country-name')
 
-        try:
-            city = soup.select("span[class='header_popularity popIndexValidation']")[0].a.text
-            dm = 'Restaurants in '  # should be the same in all web pages
-            city = city[city.find(dm)+len(dm):]
-        except IndexError:
+        # a better option is to save the locality and separate to postcode and city after scraping
+        # because the split method used here might not work for other cities (e.g. New York) as the page
+        # follows a different structure for the locality element.
+        save_as_locality = False  # Change save_as_locality to True to do the above:
+        locality = top_info.find('div', class_='businessListingContainer').find('span', class_='locality')
+        if not save_as_locality:
             try:
-                city = soup.title.text.split(',')[1].strip().split()[0]  # example: restaurant name, city - Address
-            except Exception as e:
-                print('\t[parse page] Unable to extract city')
-                print(f'Error details: {repr(e)}')
+                city = soup.select("span[class='header_popularity popIndexValidation']")[0].a.text
+                dm = 'Restaurants in '  # should be the same in all web pages
+                city = city[city.find(dm)+len(dm):]
+            except IndexError:
                 city = None
 
         # check for NoneTypes and get the text for each variable
         checks, texts = self._check_not_none([name, addr_street, addr_extended, locality, country])
-        #name, [postcode, city], country = texts[0], texts[3].strip(', ').split(), texts[4]
         name, postcode_city, country = texts[0], texts[3], texts[4]
-        if city:
-            postcode = postcode_city.replace(',', '').strip().strip(city).strip()
+        if not save_as_locality:
+            postcode_city = postcode_city.replace(',', '')
+            if city:
+                postcode = postcode_city.strip().strip(city).strip()
+            else:
+                try:
+                    postcode = postcode_city.split()[0:-1].strip()
+                    city = postcode_city.split()[-1].strip()
+                except Exception as e:
+                    print('\t[parse page] Unable to extract city and postcode.')
+                    print(f'\tError details: {repr(e)}.')
+                    print('\tSaving as locality.')
+                    postcode = postcode_city  # for manual processing
         else:
             postcode = postcode_city  # for manual processing
+            city = None
 
         # concatenate the addresses to get the full address
         if sum(checks[1:3]) == 2:
@@ -270,7 +285,7 @@ class Scraper:
 
                 # wait until the page opens completely
                 session.get(url)
-                session.implicitly_wait(100)
+                session.implicitly_wait(15)  # seconds
 
                 # interact with the web page to get the data and update the venue_data dictionary
                 venue_data.update(self.find_details(session, url=url))
@@ -296,7 +311,7 @@ class Scraper:
             for i, item in enumerate(label_elems):
                 # convert to integer and add it to the dictionary
                 venue_data['rating_'+item.text] = int(label_elems_values[i].text.replace(',', '').replace('.', ''))
-        except IndexError as e:
+        except IndexError:
             # print('[parse page]: No ratings found')
             pass
         return venue_data, session
@@ -317,7 +332,7 @@ class Scraper:
         data: dict(),
             The extracted data from the details section pop up window.
         """
-        # fixed parameters
+        # fixed parameters - should be the same for all restaurant pages (at least for the same city)
         hidden_params = {'hidden_class': 'restaurants-detail-overview-cards-DetailsSectionOverviewCard__detailsContent--1hucM',
                          'hidden_about_class': 'restaurants-detail-overview-cards-DetailsSectionOverviewCard__desktopAboutText--VY6hs',
                          'hidden_details_titles_class': 'restaurants-detail-overview-cards-DetailsSectionOverviewCard__categoryTitle--2RJP_',
@@ -332,25 +347,29 @@ class Scraper:
 
         data = dict()
         for button in details_button:
-            # button.click()  # does not work
-            session.execute_script('arguments[0].click();', button)  # this one works
+            session.execute_script('arguments[0].click();', button)  # click the button
 
+            # explicitly wait for 3 seconds
+            try:
+                element = WebDriverWait(session, 3).until(lambda x: x.find_element_by_class_name('_1Hzf3Xci'))
+            except TimeoutException as e:
+                # either the class name is not '_1Hzf3Xci' or the page did not load properly within 3 seconds
+                print(f'\t[find_details] An exception has been thrown: {repr(e)}')
             # get soup
-            element = WebDriverWait(session, 10).until(lambda x: x.find_element_by_class_name('_1Hzf3Xci'))
             soup = BeautifulSoup(session.page_source, 'html.parser')
 
             # get the about section
             try:
-                # about_text = soup.select(f'.{hidden_class}')[0].div.contents[0].find('div', text='About').next_sibling.next_sibling.text
                 about_text = soup.select(f".{hidden_params['hidden_class']}")[0].div.contents[0].find('div', class_= hidden_params['hidden_about_class']).text
                 data['about'] = about_text
+                idx = 1
             except AttributeError:
-                pass
+                idx = 0
 
             # get the details
-            details_titles = soup.select(f".{hidden_params['hidden_class']}")[0].div.contents[1].div.select(
+            details_titles = soup.select(f".{hidden_params['hidden_class']}")[0].div.contents[idx].div.select(
                 f".{hidden_params['hidden_details_titles_class']}")
-            details_values = soup.select(f".{hidden_params['hidden_class']}")[0].div.contents[1].div.select(
+            details_values = soup.select(f".{hidden_params['hidden_class']}")[0].div.contents[idx].div.select(
                 f".{hidden_params['hidden_details_values_class']}")
             for i, item in enumerate(details_titles):
                 data[item.text.lower()] = details_values[i].text
@@ -372,7 +391,7 @@ class Scraper:
         results2 = soup.find(id='EATERY_LIST_CONTENTS').find_all('a', class_='pageNum taLnk')
 
         if not results2:
-            warn("Couldn't find class 'pageNum taLnk'. Make sure you passed the correct url.")
+            warn("[_crawler] Couldn't find class 'pageNum taLnk'. Make sure you passed the correct url.")
             return []
 
         a = 'data-offset="'  # denotes the list items per page
@@ -402,7 +421,7 @@ class Scraper:
         return urls
 
     def _get_page_listings(self, soup) -> List[str]:
-        """Get all restaurants from 1 page.
+        """Get all restaurants from 1 web page.
 
         Arguments:
         ----------
@@ -436,7 +455,7 @@ class Scraper:
 
     @staticmethod
     def _check_not_none(bs4out: list) -> Tuple[list, list]:
-        """Checks for NoneTypes and gets the text for each item."""
+        """Checks for NoneTypes and returns the text for each item."""
         out = list()
         text = list()
         for item in bs4out:
@@ -470,7 +489,6 @@ class Scraper:
         """
         if mode not in ['create', 'close']:
             raise ValueError(f"mode='{mode}' is invalid. Valid values are ['create', 'close']")
-
         try:
             if mode == 'create':
                 session = webdriver.Safari()  # can use Chrome() or Firefox() as alternatives
@@ -479,7 +497,7 @@ class Scraper:
                 wbdriver.close()
                 print('Web driver session closed.')
         except (NameError, AttributeError, SessionNotCreatedException) as e:
-            print('In _webdriversession: ' + repr(e))
+            print(f'[_webdriversession] An exception has been thrown: {repr(e)}\n')
         return
 
 def main():
