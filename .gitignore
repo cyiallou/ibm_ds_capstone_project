@@ -7,6 +7,7 @@ __pycache__/
 # Distribution / packaging
 data/
 sources/
+unittests/  # remove in a future commit
 
 # specific to IntelliJ IDEA (due to using Pycharm IDE)
 .idea/
