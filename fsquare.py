@@ -1,12 +1,12 @@
-"""Class for foursquare API calls and the processing of the response (json file).
+"""Class for making foursquare API calls and processing the response (json file).
 
 Needs Foursquare client_id and client_secret. Register at their developer website.
 
 Dependencies:
 -------------
-* requests module for making server requests.
-* warnings module for raising helpful warnings.
-* typing module for useful type casting.
+* requests - for making server requests.
+* warnings - for raising helpful warnings.
+* typing - for useful type casting.
 """
 import requests
 from warnings import warn
