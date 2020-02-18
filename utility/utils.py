@@ -9,11 +9,11 @@ def lonlat_to_xy(Lon:float, Lat:float, inverse=False, zone=33) -> Tuple:
     
     Arguments:
     ----------
-    Lat: float,
-        Latitude value if inverse=False, otherwise x value.
-    
     Lon: float,
-        Longitude value if inverse=False, otherwise y value.
+        Longitude value if inverse=False, otherwise x value.
+    
+    Lat: float,
+        Latitude value if inverse=False, otherwise y value.
     
     inverse: bool,
         False if converting from lat, long to x, y otherwise set to True.
@@ -39,7 +39,7 @@ def compute_xy_distance(Lat1, Lon1, Lat2, Lon2):
 def calc_xy_distance(x1, y1, x2, y2):
     dx = x2 - x1
     dy = y2 - y1
-    return math.sqrt(dx*dx + dy*dy)
+    return (dx*dx + dy*dy) ** 0.5
 
 
 def create_grid(centre:Tuple[float, float], radius:int, minor_radius:int, area_shape:str, ov=True):
