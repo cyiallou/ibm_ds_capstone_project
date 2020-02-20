@@ -31,18 +31,7 @@ def lonlat_to_xy(Lon:float, Lat:float, inverse=False, zone=33) -> Tuple:
     return P(Lon, Lat, inverse=inverse)
 
 
-def compute_xy_distance(Lat1, Lon1, Lat2, Lon2):
-    G = pyproj.Geod(ellps='WGS84')
-    return G.inv(Lon1, Lat1, Lon2, Lat2)[2]
-
-
-def calc_xy_distance(x1, y1, x2, y2):
-    dx = x2 - x1
-    dy = y2 - y1
-    return (dx*dx + dy*dy) ** 0.5
-
-
-def create_grid(centre:Tuple[float, float], radius:int, minor_radius:int, area_shape:str, ov=True):
+def create_grid(centre:Tuple[float, float], length:int, minor_radius:int, area_shape:str, ov=True):
     """Creates a grid with centres given in cartesian coordinates.
 
     Arguments:
@@ -50,8 +39,8 @@ def create_grid(centre:Tuple[float, float], radius:int, minor_radius:int, area_s
     centre: Tuple[float, float],
         The centre of the grid.
 
-    radius: int,
-        The grid radius in meters.
+    length: int,
+        The side length in meters of the square grid.
 
     minor_radius: int,
         The radius of the grid shapes.
@@ -86,11 +75,11 @@ def create_grid(centre:Tuple[float, float], radius:int, minor_radius:int, area_s
         ov_amount = 0
 
     # number of elements needed: n = distance / step.
-    # step = 2*minor_radius, distance = 2*radius. Hence, n = radius / minor_radius
-    n = np.ceil(radius / (minor_radius - ov_amount))
+    # step = 2*minor_radius, distance = 2*length. Hence, n = length / minor_radius
+    n = np.ceil(length / (minor_radius - ov_amount))
     
     # make sure centre will be in grid_centres
-    num_grid_areas = n - 1 if (n - radius/minor_radius)>=0.5 else n
+    num_grid_areas = n - 1 if (n - length/minor_radius)>=0.5 else n
 
     # compute the new circle radius
     area_radius = minor_radius - ov_amount
@@ -98,8 +87,8 @@ def create_grid(centre:Tuple[float, float], radius:int, minor_radius:int, area_s
     # create the grid
     grid_centres_x, grid_centres_y = [], []
     for i, val in enumerate(centre):
-        start = val - radius + minor_radius
-        stop = val + radius - minor_radius
+        start = val - length + minor_radius
+        stop = val + length - minor_radius
         grid_centres = np.linspace(start, stop, int(num_grid_areas))
         # broadcast to a square array
         if i==0:
@@ -110,4 +99,15 @@ def create_grid(centre:Tuple[float, float], radius:int, minor_radius:int, area_s
             raise ValueError(f"Number of elements in centre should be 2. Got {len(centre)} instead")
 
     return centres_x, centres_y, area_radius
+
+
+def compute_xy_distance(Lat1, Lon1, Lat2, Lon2):
+    G = pyproj.Geod(ellps='WGS84')
+    return G.inv(Lon1, Lat1, Lon2, Lat2)[2]
+
+
+def calc_xy_distance(x1, y1, x2, y2):
+    dx = x2 - x1
+    dy = y2 - y1
+    return (dx*dx + dy*dy) ** 0.5
 

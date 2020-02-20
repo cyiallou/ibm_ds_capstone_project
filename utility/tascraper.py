@@ -12,7 +12,6 @@ Dependencies:
 * bs4 - BeautifulSoup, a library to parse HTML documents and navigate the element tree
 * requests - to make HTTP requests from code
 * re - Regex library, to search for more complex strings
-* warnings - to issue useful user warnings
 * selenium - to interact with the web page and uncover hidden data
 
 Examples:

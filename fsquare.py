@@ -5,8 +5,6 @@ Needs Foursquare client_id and client_secret. Register at their developer websit
 Dependencies:
 -------------
 * requests - for making server requests.
-* warnings - for raising helpful warnings.
-* typing - for useful type casting.
 """
 import requests
 from warnings import warn
