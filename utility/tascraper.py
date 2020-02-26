@@ -2,6 +2,16 @@
 
 About:
 ------
+Scraping of restaurant details for a given city. The scraper crawls through all the
+restaurant listing pages, interacts with the web page using selenium to uncover hidden
+data and creates a data set. 
+
+Usage:
+------
+See examples. The url should be a search page result on the trip advisor website.
+
+Notes:
+------
 This class module is built primarily to extract data from Berlin restaurant pages.
 Minor changes might need to be made in order to work for other cities as well. The
 code is commented to help the developer make these changes. In addition, the warnings
@@ -480,10 +490,6 @@ class Scraper:
         except (NameError, AttributeError, SessionNotCreatedException) as e:
             print(f'[_webdriversession] An exception has been thrown: {repr(e)}\n')
         return
-
-def main():
-    # read command line arguments (the url)
-    pass
 
 
 if __name__ == '__main__':
