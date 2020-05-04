@@ -52,7 +52,7 @@ from typing import List, Tuple  # for type casting
 
 class Scraper:
 
-    def __init__(self):  # , argv):
+    def __init__(self):
         self.base_url = None
         self.domain_name = None
 
